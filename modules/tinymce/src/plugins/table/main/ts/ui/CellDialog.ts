@@ -7,6 +7,8 @@
 
 import { Selections } from '@ephox/darwin';
 import { Arr, Fun } from '@ephox/katamari';
+import { TableLookup, Warehouse } from '@ephox/snooker';
+import { SugarElement } from '@ephox/sugar';
 import Editor from 'tinymce/core/api/Editor';
 import { Dialog } from 'tinymce/core/api/ui/Ui';
 import * as Styles from '../actions/Styles';
@@ -19,11 +21,16 @@ import * as Helpers from './Helpers';
 
 type CellData = Helpers.CellData;
 
-const updateSimpleProps = (modifier: DomModifier, data: CellData) => {
+const updateSimpleProps = (editor: Editor, modifier: DomModifier, isSingleCell: boolean, column: SugarElement<HTMLElement> | undefined, data: CellData) => {
   modifier.setAttrib('scope', data.scope);
   modifier.setAttrib('class', data.class);
-  modifier.setStyle('width', Util.addPxSuffix(data.width));
   modifier.setStyle('height', Util.addPxSuffix(data.height));
+  if (column) {
+    const columnModifier = isSingleCell ? DomModifier.normal(editor, column.dom) : DomModifier.ifTruthy(editor, column.dom);
+    columnModifier.setStyle('width', Util.addPxSuffix(data.width));
+  } else {
+    modifier.setStyle('width', Util.addPxSuffix(data.width));
+  }
 };
 
 const updateAdvancedProps = (modifier: DomModifier, data: CellData) => {
@@ -49,12 +56,26 @@ const applyCellData = (editor: Editor, cells: HTMLTableCellElement[], data: Cell
   const dom = editor.dom;
   const isSingleCell = cells.length === 1;
 
-  Arr.each(cells, (cell) => {
+  const table = TableLookup.table(SugarElement.fromDom(cells[0])).getOrNull();
+
+  const warehouse = Warehouse.Warehouse.fromTable(table);
+
+  const allCells = Warehouse.Warehouse.justCells(warehouse);
+  const columns = Warehouse.Warehouse.justColumns(warehouse);
+
+  const selectedCells = Arr.filter(allCells, (cellA) =>
+    Arr.exists(cells, (cellB) =>
+      cellA.element.dom === cellB
+    )
+  );
+
+  Arr.each(selectedCells, (cell) => {
     // Switch cell type if applicable
-    const cellElm = data.celltype && Util.getNodeName(cell) !== data.celltype ? (dom.rename(cell, data.celltype) as HTMLTableCellElement) : cell;
+    const cellElement = cell.element.dom;
+    const cellElm = data.celltype && Util.getNodeName(cellElement) !== data.celltype ? (dom.rename(cellElement, data.celltype) as HTMLTableCellElement) : cellElement;
     const modifier = isSingleCell ? DomModifier.normal(editor, cellElm) : DomModifier.ifTruthy(editor, cellElm);
 
-    updateSimpleProps(modifier, data);
+    updateSimpleProps(editor, modifier, isSingleCell, columns[cell.column], data);
 
     if (hasAdvancedCellTab(editor)) {
       updateAdvancedProps(modifier, data);
@@ -88,7 +109,29 @@ const onSubmitCellForm = (editor: Editor, cells: HTMLTableCellElement[], api) =>
   });
 };
 
+const getData = (editor: Editor, startCell: SugarElement<Element>, cells: SugarElement<HTMLTableCellElement>[]) => {
+  const table = TableLookup.table(startCell).getOrNull();
+
+  const warehouse = Warehouse.Warehouse.fromTable(table);
+
+  const columns = Warehouse.Warehouse.justColumns(warehouse);
+  const allCells = Warehouse.Warehouse.justCells(warehouse);
+
+  const selectedCells = Arr.filter(allCells, (cellA) =>
+    Arr.exists(cells, (cellB) =>
+      cellA.element.dom === cellB.dom
+    )
+  );
+
+  const cellsData: CellData[] = Arr.map(selectedCells, (cell) =>
+    Helpers.extractDataFromCellElement(editor, cell.element.dom, columns[cell.column], hasAdvancedCellTab(editor))
+  );
+
+  return Helpers.getSharedValues<CellData>(cellsData);
+};
+
 const open = (editor: Editor, selections: Selections) => {
+  const cell = Util.getSelectionStart(editor);
   const cells = TableSelection.getCellsFromSelection(Util.getSelectionStart(editor), selections);
 
   // Check if there are any cells to operate on
@@ -96,11 +139,7 @@ const open = (editor: Editor, selections: Selections) => {
     return;
   }
 
-  // Get current data and find shared values between cells
-  const cellsData: CellData[] = Arr.map(cells,
-    (cellElm) => Helpers.extractDataFromCellElement(editor, cellElm.dom, hasAdvancedCellTab(editor))
-  );
-  const data = Helpers.getSharedValues<CellData>(cellsData);
+  const data = getData(editor, cell, cells);
 
   const dialogTabPanel: Dialog.TabPanelSpec = {
     type: 'tabpanel',
