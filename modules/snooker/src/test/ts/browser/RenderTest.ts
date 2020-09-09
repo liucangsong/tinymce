@@ -34,7 +34,7 @@ UnitTest.asynctest('RenderTest', (success, failure) => {
         ]
       })), table);
     })),
-    Logger.t('Render table with everything disabled without colgroup', Step.sync(() => {
+    Logger.t('Render table with everything disabled and with styles and without colgroup', Step.sync(() => {
       const table = Render.render(1, 2, 0, 0, 'cells', { styles: { width: '50%', height: '100px' }, attributes: {}, colGroups: false });
 
       Assertions.assertStructure('Should be a table with styles', ApproxStructure.build((s, str, _arr) => s.element('table', {
@@ -70,7 +70,7 @@ UnitTest.asynctest('RenderTest', (success, failure) => {
         ]
       })), table);
     })),
-    Logger.t('Render table with everything disabled with colgroup', Step.sync(() => {
+    Logger.t('Render table with everything disabled and with styles and with colgroup', Step.sync(() => {
       const table = Render.render(1, 2, 0, 0, 'cells', { styles: { width: '50%', height: '100px' }, attributes: {}, colGroups: true });
 
       Assertions.assertStructure('Should be a table with styles', ApproxStructure.build((s, str, _arr) => s.element('table', {

@@ -22,7 +22,7 @@ const columns = (warehouse: Warehouse): Optional<SugarElement>[] => {
         Arr.bind(rowsArr, (r) =>
           Warehouse.getAt(warehouse, r, col)
             .filter((detail) => detail.column === col)
-            .fold(Fun.constant([] as DetailExt[]), (detail) => [ detail ])
+            .toArray()
         );
 
       const isSingle = (detail: DetailExt) => detail.colspan === 1;

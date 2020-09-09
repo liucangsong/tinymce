@@ -23,12 +23,10 @@ const insertRowAt = function (grid: Structs.RowCells[], index: number, example: 
 };
 
 const getElementFor = (row: Structs.RowCells, column: number, section: string, withinSpan: boolean, example: number, comparator: CompElm, substitution: Subst): Structs.ElementNew => {
-  if (section === 'colgroup') {
+  if (section === 'colgroup' || !withinSpan) {
     return Structs.elementnew(substitution(GridRow.getCellElement(row, example), comparator), true);
-  } else if (withinSpan) {
-    return GridRow.getCell(row, column);
   } else {
-    return Structs.elementnew(substitution(GridRow.getCellElement(row, example), comparator), true);
+    return GridRow.getCell(row, column);
   }
 };
 

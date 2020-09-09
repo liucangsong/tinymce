@@ -28,15 +28,6 @@ UnitTest.asynctest('browser.tinymce.plugins.table.InsertTableWithColGroupTest', 
         ], true),
         tinyApis.sAssertSelection([ 0, 1, 0, 0 ], 0, [ 0, 1, 0, 0 ], 0)
       ]),
-      Log.stepsAsStep('TBA', 'Table: Insert table 2x2', [
-        tinyApis.sSetContent(''),
-        sInsertTable(editor, 2, 2),
-        sAssertTableStructureWithSizes(editor, 2, 2, '%', 100, [
-          [ 50, 50 ],
-          [ 50, 50 ]
-        ], true),
-        tinyApis.sAssertSelection([ 0, 1, 0, 0 ], 0, [ 0, 1, 0, 0 ], 0)
-      ]),
       Log.stepsAsStep('TBA', 'Table: Insert table 1x2', [
         tinyApis.sSetContent(''),
         sInsertTable(editor, 1, 2),
