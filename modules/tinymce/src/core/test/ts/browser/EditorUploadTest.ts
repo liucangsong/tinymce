@@ -292,35 +292,8 @@ UnitTest.asynctest('browser.tinymce.core.EditorUploadTest', (success, failure) =
       Assert.eq('No element in the editor', undefined, editor.$('img')[0]);
       Assert.eq('Status is false', result[0].status, false);
       Assert.eq('Uri is empty', result[0].uploadUri, '');
+      Assert.eq('content is correct', editor.undoManager.data[0].content, '<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-mce-placeholder="" ></p>');
       Assert.eq('Suitable number of stacks added', 2, editor.undoManager.data.length);
-      Assert.eq('Test', [
-        {
-          type: 'complete',
-          fragments: null,
-          content: '<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-mce-placeholder="" ></p>',
-          bookmark: {
-            start: [
-              0
-            ]
-          },
-          beforeBookmark: {
-            start: [
-              0
-            ]
-          }
-        },
-        {
-          type: 'complete',
-          fragments: null,
-          content: '<p></p>',
-          bookmark: {
-            start: [
-              0
-            ]
-          },
-          beforeBookmark: null
-        }
-      ] as any, editor.undoManager.data);
     };
 
     editor.resetContent(imageHtml(testBlobDataUri));

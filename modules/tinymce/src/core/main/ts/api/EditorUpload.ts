@@ -91,9 +91,7 @@ const EditorUpload = function (editor: Editor): EditorUpload {
     return content;
   };
 
-  const replaceUrlInUndoStack = (targetUrl: string, replacementUrl: string, replaceFunction?: ReplaceFunction) => {
-    const replace = replaceFunction || replaceImageUrl;
-
+  const replaceUrlInUndoStack = (targetUrl: string, replacementUrl: string, replace: ReplaceFunction = replaceImageUrl) => {
     Arr.each(editor.undoManager.data, (level) => {
       if (level.type === 'fragmented') {
         level.fragments = Arr.map(level.fragments, (fragment) =>
