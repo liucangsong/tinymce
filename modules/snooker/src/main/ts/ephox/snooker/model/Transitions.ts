@@ -52,8 +52,8 @@ const toGrid = (warehouse: Warehouse, generators: Generators, isNew: boolean) =>
   }
 
   if (Warehouse.hasColumns(warehouse)) {
-    const groupElementNew = Arr.map(warehouse.groups, (group: SugarElement): Structs.ElementNew =>
-      Structs.elementnew(group, isNew)
+    const groupElementNew = Arr.map(Warehouse.justColumns(warehouse), (column: Structs.Column): Structs.ElementNew =>
+      Structs.elementnew(column.element, isNew)
     );
 
     grid.push(Structs.rowcells(groupElementNew, 'colgroup'));

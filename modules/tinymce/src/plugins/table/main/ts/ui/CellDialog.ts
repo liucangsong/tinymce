@@ -8,7 +8,7 @@
 import { Selections } from '@ephox/darwin';
 import { Arr, Fun } from '@ephox/katamari';
 import { TableLookup, Warehouse } from '@ephox/snooker';
-import { SugarElement } from '@ephox/sugar';
+import { Compare, SugarElement } from '@ephox/sugar';
 import Editor from 'tinymce/core/api/Editor';
 import { Dialog } from 'tinymce/core/api/ui/Ui';
 import * as Styles from '../actions/Styles';
@@ -20,6 +20,16 @@ import { DomModifier } from './DomModifier';
 import * as Helpers from './Helpers';
 
 type CellData = Helpers.CellData;
+
+const getSelectedCells = (warehouse: Warehouse, cells: SugarElement<HTMLTableCellElement>[]) => {
+  const allCells = Warehouse.justCells(warehouse);
+
+  return Arr.filter(allCells, (cellA) =>
+    Arr.exists(cells, (cellB) =>
+      Compare.eq(cellA.element, cellB)
+    )
+  );
+};
 
 const updateSimpleProps = (editor: Editor, modifier: DomModifier, isSingleCell: boolean, column: SugarElement<HTMLElement> | undefined, data: CellData) => {
   modifier.setAttrib('scope', data.scope);
@@ -52,54 +62,53 @@ const updateAdvancedProps = (modifier: DomModifier, data: CellData) => {
 // how as part of this, it doesn't remove any original alignment before
 // applying any specified alignment.
 
-const applyCellData = (editor: Editor, cells: HTMLTableCellElement[], data: CellData) => {
+const applyCellData = (editor: Editor, cells: SugarElement<HTMLTableCellElement>[], data: CellData) => {
   const dom = editor.dom;
   const isSingleCell = cells.length === 1;
 
-  const table = TableLookup.table(SugarElement.fromDom(cells[0])).getOrNull();
+  if (cells.length >= 1) {
+    const table = TableLookup.table(SugarElement.fromDom(cells[0].dom)).getOrNull();
 
-  const warehouse = Warehouse.Warehouse.fromTable(table);
+    if (table) {
+      const warehouse = Warehouse.fromTable(table);
 
-  const allCells = Warehouse.Warehouse.justCells(warehouse);
-  const columns = Warehouse.Warehouse.justColumns(warehouse);
+      const selectedCells = getSelectedCells(warehouse, cells);
 
-  const selectedCells = Arr.filter(allCells, (cellA) =>
-    Arr.exists(cells, (cellB) =>
-      cellA.element.dom === cellB
-    )
-  );
+      Arr.each(selectedCells, (cell) => {
+        // Switch cell type if applicable
+        const cellElement = cell.element.dom;
+        const cellElm = data.celltype && Util.getNodeName(cellElement) !== data.celltype ? (dom.rename(cellElement, data.celltype) as HTMLTableCellElement) : cellElement;
+        const modifier = isSingleCell ? DomModifier.normal(editor, cellElm) : DomModifier.ifTruthy(editor, cellElm);
 
-  Arr.each(selectedCells, (cell) => {
-    // Switch cell type if applicable
-    const cellElement = cell.element.dom;
-    const cellElm = data.celltype && Util.getNodeName(cellElement) !== data.celltype ? (dom.rename(cellElement, data.celltype) as HTMLTableCellElement) : cellElement;
-    const modifier = isSingleCell ? DomModifier.normal(editor, cellElm) : DomModifier.ifTruthy(editor, cellElm);
+        const column = Warehouse.getColumnAtIndex(warehouse, cell.column);
 
-    updateSimpleProps(editor, modifier, isSingleCell, columns[cell.column], data);
+        updateSimpleProps(editor, modifier, isSingleCell, column ? column.element : undefined, data);
 
-    if (hasAdvancedCellTab(editor)) {
-      updateAdvancedProps(modifier, data);
+        if (hasAdvancedCellTab(editor)) {
+          updateAdvancedProps(modifier, data);
+        }
+
+        // Remove alignment
+        if (isSingleCell) {
+          Styles.unApplyAlign(editor, cellElm);
+          Styles.unApplyVAlign(editor, cellElm);
+        }
+
+        // Apply alignment
+        if (data.halign) {
+          Styles.applyAlign(editor, cellElm, data.halign);
+        }
+
+        // Apply vertical alignment
+        if (data.valign) {
+          Styles.applyVAlign(editor, cellElm, data.valign);
+        }
+      });
     }
-
-    // Remove alignment
-    if (isSingleCell) {
-      Styles.unApplyAlign(editor, cellElm);
-      Styles.unApplyVAlign(editor, cellElm);
-    }
-
-    // Apply alignment
-    if (data.halign) {
-      Styles.applyAlign(editor, cellElm, data.halign);
-    }
-
-    // Apply vertical alignment
-    if (data.valign) {
-      Styles.applyVAlign(editor, cellElm, data.valign);
-    }
-  });
+  }
 };
 
-const onSubmitCellForm = (editor: Editor, cells: HTMLTableCellElement[], api) => {
+const onSubmitCellForm = (editor: Editor, cells: SugarElement<HTMLTableCellElement>[], api) => {
   const data: CellData = api.getData();
   api.close();
 
@@ -112,20 +121,15 @@ const onSubmitCellForm = (editor: Editor, cells: HTMLTableCellElement[], api) =>
 const getData = (editor: Editor, startCell: SugarElement<Element>, cells: SugarElement<HTMLTableCellElement>[]) => {
   const table = TableLookup.table(startCell).getOrNull();
 
-  const warehouse = Warehouse.Warehouse.fromTable(table);
+  const warehouse = Warehouse.fromTable(table);
 
-  const columns = Warehouse.Warehouse.justColumns(warehouse);
-  const allCells = Warehouse.Warehouse.justCells(warehouse);
+  const selectedCells = getSelectedCells(warehouse, cells);
 
-  const selectedCells = Arr.filter(allCells, (cellA) =>
-    Arr.exists(cells, (cellB) =>
-      cellA.element.dom === cellB.dom
-    )
-  );
+  const cellsData: CellData[] = Arr.map(selectedCells, (cell) => {
+    const column = Warehouse.getColumnAtIndex(warehouse, cell.column);
 
-  const cellsData: CellData[] = Arr.map(selectedCells, (cell) =>
-    Helpers.extractDataFromCellElement(editor, cell.element.dom, columns[cell.column], hasAdvancedCellTab(editor))
-  );
+    return Helpers.extractDataFromCellElement(editor, cell.element.dom, column ? column.element : undefined, hasAdvancedCellTab(editor));
+  });
 
   return Helpers.getSharedValues<CellData>(cellsData);
 };
@@ -180,7 +184,7 @@ const open = (editor: Editor, selections: Selections) => {
       }
     ],
     initialData: data,
-    onSubmit: Fun.curry(onSubmitCellForm, editor, Arr.map(cells, (c) => c.dom))
+    onSubmit: Fun.curry(onSubmitCellForm, editor, cells)
   });
 };
 

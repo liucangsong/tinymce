@@ -1,5 +1,6 @@
 import { Arr } from '@ephox/katamari';
 import { SugarElement } from '@ephox/sugar';
+import * as Structs from '../api/Structs';
 import { Warehouse } from '../api/Warehouse';
 
 // Returns the sum of elements of measures in the half-open range [start, end)
@@ -47,15 +48,11 @@ const recalculateWidthForCells = (warehouse: Warehouse, widths: number[]): CellW
 const recalculateWidthForColumns = (warehouse: Warehouse, widths: number[]): CellWidthSpan[] => {
   const groups = Warehouse.justColumns(warehouse);
 
-  return Arr.map(groups, (col: SugarElement, index: number) => {
-    const colspan = col.dom.getAttribute('colspan');
-
-    return {
-      element: col,
-      width: widths[index],
-      colspan: colspan ? Number.parseInt(colspan, 10) : 1
-    };
-  });
+  return Arr.map(groups, (column: Structs.Column, index: number) => ({
+    element: column.element,
+    width: widths[index],
+    colspan: column.colspan
+  }));
 };
 
 const recalculateHeightForCells = (warehouse: Warehouse, heights: number[]): CellHeightSpan[] => {
